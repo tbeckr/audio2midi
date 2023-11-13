@@ -13,7 +13,25 @@ import pyaudio
 import sys
 import numpy as np
 import aubio
+import time
+import math
+import rtmidi
 
+
+def setup_midi_out():
+    midiout = rtmidi.MidiOut()
+    available_ports = midiout.get_ports()
+    print(available_ports)
+
+    # if available_ports:
+    #     midiout.open_port(0)
+    # else:
+    midiout.open_virtual_port("My virtual output")
+
+    return midiout
+
+midiout = setup_midi_out()
+# exit(0)
 # initialise pyaudio
 p = pyaudio.PyAudio()
 
@@ -48,15 +66,15 @@ pitch_o.set_unit("midi")
 pitch_o.set_tolerance(tolerance)
 
 print("*** starting recording")
+last_pitch = 0 
 while True:
     try:
         audiobuffer = stream.read(buffer_size)
         signal = np.fromstring(audiobuffer, dtype=np.float32)
 
-        pitch = pitch_o(signal)[0]
+        pitch = math.modf(pitch_o(signal)[0])[1]
         confidence = pitch_o.get_confidence()
 
-        print("{} / {}".format(pitch,confidence))
 
         if outputsink:
             outputsink(signal, len(signal))
@@ -65,6 +83,19 @@ while True:
             total_frames += len(signal)
             if record_duration * samplerate < total_frames:
                 break
+
+        if pitch == 0:
+            midiout.send_message([0x80, last_pitch, 100])
+
+        # if confidence > 0.8:
+        if pitch != last_pitch:
+            midiout.send_message([0x90, pitch, 100])
+            midiout.send_message([0x80, pitch, 100])
+            print(pitch)
+
+        last_pitch = pitch
+
+
     except KeyboardInterrupt:
         print("*** Ctrl+C pressed, exiting")
         break
