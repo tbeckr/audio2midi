@@ -89,8 +89,8 @@ while True:
 
         # if confidence > 0.8:
         if pitch != last_pitch:
-            midiout.send_message([0x90, pitch, 100])
             midiout.send_message([0x80, pitch, 100])
+            midiout.send_message([0x90, pitch, 100])
             print(pitch)
 
         last_pitch = pitch
